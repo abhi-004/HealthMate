@@ -120,7 +120,6 @@ def generate_prescription_data(user, current_session):
         Generate a prescription that identifies the health issue, lists the symptoms, specifies the medicines prescribed, 
         and gives lifestyle advice. Respond only with a well-formed JSON object. Do not include any introductory or 
         explanatory text, just the JSON object. Here is the required format:
-
         {
         "Username": "%s",
         "HealthIssue": "",
@@ -194,49 +193,49 @@ def store_combined_chat_messages(current_session, messages):
         chat=combined_chat,
         timestamp=timezone.now()
     )
-   
+
 
 # Function to generate PDF
 def create_prescription_pdf(prescription_data, file_path):
     # Create the PDF document
     doc = SimpleDocTemplate(file_path, pagesize=letter)
     story = []
-    
+
     # Define styles
     styles = getSampleStyleSheet()
     title_style = styles['Title']
     normal_style = styles['BodyText']
     bold_style = styles['Heading2']
-    
+
     # Title
     title = Paragraph("Prescription Details", title_style)
     story.append(title)
     story.append(Spacer(1, 12))
-    
+
     # User Information
     user_info = Paragraph(f"<b>Username:</b> {prescription_data.get('Username', '')}", normal_style)
     story.append(user_info)
     story.append(Spacer(1, 12))
-    
+
     # Health Issue
     health_issue = Paragraph(f"<b>Health Issue:</b> {prescription_data.get('HealthIssue', '')}", normal_style)
     story.append(health_issue)
     story.append(Spacer(1, 12))
-    
+
     # Symptoms
     symptoms = prescription_data.get('Symptoms', [])
     story.append(Paragraph("<b>Symptoms:</b>", bold_style))
     symptom_items = [ListItem(Paragraph(f"- {symptom}", normal_style)) for symptom in symptoms]
     story.append(ListFlowable(symptom_items, bulletType='bullet'))
     story.append(Spacer(1, 12))
-    
+
     # Medicines Prescribed
     medicines = prescription_data.get('MedicinesPrescribed', [])
     story.append(Paragraph("<b>Medicines Prescribed:</b>", bold_style))
     medicine_items = [ListItem(Paragraph(f"- {med}", normal_style)) for med in medicines]
     story.append(ListFlowable(medicine_items, bulletType='bullet'))
     story.append(Spacer(1, 12))
-    
+
     # Lifestyle Advice
     story.append(Paragraph("<b>Lifestyle Advice:</b>", bold_style))
     lifestyle_advice = prescription_data.get('LifestyleAdvice', [])
@@ -244,7 +243,7 @@ def create_prescription_pdf(prescription_data, file_path):
     # Convert the list of lifestyle advice into a single string if it's a list
     if isinstance(lifestyle_advice, list):
         lifestyle_advice = " ".join(lifestyle_advice)
-    
+
     # Custom style to prevent text breakage
     advice_style = ParagraphStyle(
         'AdviceStyle',
@@ -256,7 +255,7 @@ def create_prescription_pdf(prescription_data, file_path):
     advice_paragraph = Paragraph(f"- {lifestyle_advice}", advice_style)
     story.append(advice_paragraph)
     story.append(Spacer(1, 12))  # Add a small space between each advice item
-    
+
     # Add the doctor's name at the end
     doctor_name = Paragraph("<b>Doctor:</b> Healthmate", normal_style)
     story.append(doctor_name)

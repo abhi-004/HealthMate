@@ -8,7 +8,7 @@
         <a href="#" class="btn btn-dark" id="logout-btn">Logout</a>
         <button id="end-session-btn" class="btn btn-primary">End Session and Generate Prescription</button>
     </div>
-    
+
     <!-- Chatbot Interface -->
     <div class="chatbot-wrapper mt-4">
         <div class="chatbox border rounded p-3">
@@ -184,10 +184,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function appendMessage(sender, messageContent) {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message');
-    
+
         const messageInnerDiv = document.createElement('div');
         messageInnerDiv.classList.add('d-flex', sender === 'user' ? 'justify-content-end' : 'justify-content-start');
-    
+
         const messageBubble = document.createElement('div');
         messageBubble.classList.add('chatbot-message', 'p-2', 'rounded');
         if (sender === 'user') {
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
             messageBubble.classList.add('text-white');
         }
         messageBubble.innerHTML = messageContent;
-    
+
         messageInnerDiv.appendChild(messageBubble);
         messageDiv.appendChild(messageInnerDiv);
         chatBody.appendChild(messageDiv);

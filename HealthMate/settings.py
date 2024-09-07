@@ -93,7 +93,7 @@ DATABASES = {
             'NAME': 'db_healthmate',
             'USER': 'bot_user',
             'PASSWORD': 'bot_password',
-            'HOST': 'localhost',       #host.docker.internal
+            'HOST': 'host.docker.internal',       #host.docker.internal
             'PORT': '5432',
         }
     }

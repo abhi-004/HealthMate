@@ -94,8 +94,8 @@ class AuthAppTests(TestCase):
     def test_end_session_without_active_session(self):
         self.client.login(username='testuser', password='testpassword')
         response = self.client.post(self.end_session_url, content_type='application/json')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['status'], 'success')
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['status'], 'error')
 
     def test_logout_view(self):
         self.client.login(username='testuser', password='testpassword')

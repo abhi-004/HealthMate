@@ -172,17 +172,17 @@ def end_session_and_generate_prescription(request):
             with transaction.atomic():
                 # Generate and store the prescription
                 file_response, filename = generate_and_store_prescription(request.user)
-                
+
                 # End the current chat session
                 end_current_chat_session(request.user)
-                
+
             # Return the file response to download the PDF
             return file_response
         except Exception as e:
             # Log the error for debugging purposes
             error_trace = traceback.format_exc()
             print(f"Error during prescription generation: {error_trace}")
-            
+
             # Return an error response as JSON
             return JsonResponse({
                 'status': 'error',

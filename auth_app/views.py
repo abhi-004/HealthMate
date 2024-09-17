@@ -3,13 +3,14 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+import speech_recognition as sr
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import ChatMessage, Prescription, ChatSession  # Import ChatSession here
 from datetime import datetime
@@ -20,9 +21,12 @@ from django.db import transaction
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter 
 from django.http import FileResponse
+from gtts import gTTS
+import tempfile
 import json
 import os
 import traceback 
+import subprocess
 
 # Load environment variables from .env file
 load_dotenv()
@@ -172,17 +176,14 @@ def end_session_and_generate_prescription(request):
             with transaction.atomic():
                 # Generate and store the prescription
                 file_response, filename = generate_and_store_prescription(request.user)
-
                 # End the current chat session
                 end_current_chat_session(request.user)
-
             # Return the file response to download the PDF
             return file_response
         except Exception as e:
             # Log the error for debugging purposes
             error_trace = traceback.format_exc()
             print(f"Error during prescription generation: {error_trace}")
-
             # Return an error response as JSON
             return JsonResponse({
                 'status': 'error',
@@ -193,3 +194,72 @@ def end_session_and_generate_prescription(request):
             'status': 'error',
             'message': 'Invalid request method.'
         }, status=405)
+
+@csrf_exempt
+def text_to_speech(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        text = data.get('text', '')
+        
+        tts = gTTS(text=text, lang='en')
+        
+        # Save the audio to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+            tts.save(fp.name)
+            fp.seek(0)
+            audio_content = fp.read()
+        
+        # Delete the temporary file
+        os.unlink(fp.name)
+        
+        return HttpResponse(audio_content, content_type='audio/mpeg')
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def speech_to_text(request):
+    if request.method == 'POST':
+        audio_file = request.FILES.get('audio')
+        
+        if not audio_file:
+            return JsonResponse({'error': 'No audio file provided'}, status=400)
+        
+        recognizer = sr.Recognizer()
+        
+        try:
+            # Check if FFmpeg is installed
+            subprocess.run(['ffmpeg', '-version'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            # Create a unique filename for the WAV file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_wav:
+                wav_filename = temp_wav.name
+            
+            # Use FFmpeg to convert WebM to WAV
+            process = subprocess.Popen(['ffmpeg', '-i', 'pipe:0', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', '-y', wav_filename],
+                                       stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate(input=audio_file.read())
+            
+            if process.returncode != 0:
+                print(f"FFmpeg stderr: {stderr.decode()}")
+                return JsonResponse({'error': 'Error converting audio file'}, status=500)
+            
+            with sr.AudioFile(wav_filename) as source:
+                audio = recognizer.record(source)
+            
+            text = recognizer.recognize_google(audio)
+            return JsonResponse({'text': text})
+        except subprocess.CalledProcessError:
+            return JsonResponse({'error': 'FFmpeg is not installed. Please install FFmpeg to use speech-to-text functionality.'}, status=500)
+        except sr.UnknownValueError:
+            return JsonResponse({'error': 'Speech could not be recognized'}, status=400)
+        except sr.RequestError as e:
+            return JsonResponse({'error': f'Could not request results from speech recognition service: {str(e)}'}, status=500)
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            print(f"Error in speech_to_text: {error_trace}")
+            return JsonResponse({'error': f'An error occurred: {str(e)}'}, status=500)
+        finally:
+            if 'wav_filename' in locals():
+                os.unlink(wav_filename)
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
